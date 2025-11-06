@@ -23,11 +23,11 @@ jobs:
     steps:
       # Крок 1: Завантажити код з репозиторію
       - name: Checkout repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       # Крок 2: Встановити Node.js
       - name: Setup Node.js
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
           node-version: '18'  # Версія Node.js
 
@@ -60,7 +60,7 @@ jobs:
 
       # Крок 7: Зберегти артефакт (папку dist)
       - name: Upload build artifact
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: build-output
           path: dist/
