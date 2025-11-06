@@ -1,0 +1,72 @@
+# GitHub Actions CI Pipeline
+# Автоматична збірка Node.js проєкту ci-node-demo
+
+name: CI Pipeline
+
+# Коли запускати цей workflow
+on:
+  push:
+    branches:
+      - main  # Запускається при push до гілки main
+  pull_request:
+    branches:
+      - main  # Також при pull request до main
+
+# Завдання (jobs), які виконуватимуться
+jobs:
+  # Назва завдання
+  build:
+    # На якій операційній системі запускати
+    runs-on: ubuntu-latest
+
+    # Послідовність кроків
+    steps:
+      # Крок 1: Завантажити код з репозиторію
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      # Крок 2: Встановити Node.js
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'  # Версія Node.js
+
+      # Крок 3: Встановити залежності (якщо є)
+      - name: Install dependencies
+        run: npm install
+
+      # Крок 4: Запустити білд
+      - name: Build project
+        run: npm run build
+
+      # Крок 5: Перевірити, що білд успішний
+      - name: Verify build output
+        run: |
+          if [ -d "dist" ]; then
+            echo "✓ Build directory created successfully"
+            echo "Contents of dist/:"
+            ls -lah dist/
+            echo ""
+            echo "Content of index.html:"
+            cat dist/index.html
+          else
+            echo "✗ Build directory not found!"
+            exit 1
+          fi
+
+      # Крок 6: Запустити index.js для перевірки
+      - name: Test index.js
+        run: node index.js
+
+      # Крок 7: Зберегти артефакт (папку dist)
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: build-output
+          path: dist/
+          retention-days: 7  # Зберігати 7 днів
+
+      # Крок 8: Показати успішне завершення
+      - name: CI completed
+        run: |
+          echo " CI Pipeline completed successfully!"
