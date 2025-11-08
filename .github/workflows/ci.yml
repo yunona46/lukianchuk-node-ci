@@ -71,85 +71,46 @@ jobs:
         run: |
           echo " CI Pipeline completed successfully!"
 
-      #  НОВІ КРОКИ ДЛЯ ДЕПЛОЮ НА EC2 
 
 
-      # Крок: Декодування SSH ключа
+      # === ДЕПЛОЙ НА EC2 ===
 
-      - name:  Decode SSH key
-
+      - name: Decode SSH key
         run: |
-
           echo "${{ secrets.EC2_SSH_KEY_B64 }}" | base64 -d > ec2-key.pem
-
           chmod 600 ec2-key.pem
 
-       # Крок: Встановлення rsync
-      - name: 📦 Install rsync
-        run: sudo apt-get update && sudo apt-get install -y rsync
-
-      # Крок: Копіювання файлів на EC2
-
-      - name:  Deploy to EC2
-
+      - name: Deploy to EC2
         run: |
-
-          rsync -avz --delete \
-
-            -e "ssh -i ec2-key.pem -o StrictHostKeyChecking=no" \
-
-            --exclude 'node_modules' \
-
-            --exclude '.git' \
-
-            ./ ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }}:/home/${{ secrets.EC2_USER }}/nodeapp/
-
-
-      # Крок: Запуск застосунку на EC2
-
-      - name:  Start application on EC2
-
-        run: |
-
           ssh -i ec2-key.pem -o StrictHostKeyChecking=no \
+            ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} \
+            "mkdir -p /home/${{ secrets.EC2_USER }}/nodeapp"
 
+          tar --exclude='node_modules' --exclude='.git' --exclude='.github' -czf - . | \
+            ssh -i ec2-key.pem -o StrictHostKeyChecking=no \
+            ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} \
+            "tar -xzf - -C /home/${{ secrets.EC2_USER }}/nodeapp/"
+
+      - name: Start application on EC2
+        run: |
+          ssh -i ec2-key.pem -o StrictHostKeyChecking=no \
             ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} << 'EOF'
-
           cd /home/ubuntu/nodeapp
 
-
-          # Встановлюємо Node.js якщо немає
-
           if ! command -v node &> /dev/null; then
-
             curl -fsSL https://deb.nodesource.com/setup_18.x | sudo -E bash -
-
             sudo apt-get install -y nodejs
-
           fi
-
-
-          # Встановлюємо PM2 якщо немає
 
           if ! command -v pm2 &> /dev/null; then
-
             sudo npm install -g pm2
-
           fi
 
-
-          # Встановлюємо залежності
-
           npm install
-
-
-          # Перезапускаємо застосунок
-
-          pm2 restart index.js || pm2 start index.js --name nodeapp
-
+          pm2 restart nodeapp || pm2 start index.js --name nodeapp
           pm2 save
 
-
-          echo " Application deployed and running!"
-
+          echo " Application deployed!"
           EOF
+
+
