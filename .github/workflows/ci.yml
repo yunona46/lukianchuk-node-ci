@@ -84,6 +84,9 @@ jobs:
 
           chmod 600 ec2-key.pem
 
+       # Крок: Встановлення rsync
+      - name: 📦 Install rsync
+        run: sudo apt-get update && sudo apt-get install -y rsync
 
       # Крок: Копіювання файлів на EC2
 
