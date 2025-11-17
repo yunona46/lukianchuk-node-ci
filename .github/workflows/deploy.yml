@@ -1,0 +1,56 @@
+﻿name: Build and Deploy
+
+on:
+  push:
+    branches: [ main, master ]
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+    
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v2
+    
+    - name: Log in to Docker Hub
+      uses: docker/login-action@v2
+      with:
+        username: ${{ secrets.DOCKERHUB_USERNAME }}
+        password: ${{ secrets.DOCKERHUB_TOKEN }}
+    
+    - name: Extract metadata
+      id: meta
+      run: |
+        echo "branch=${GITHUB_REF#refs/heads/}" >> $GITHUB_OUTPUT
+        echo "sha_short=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
+    
+    - name: Build and push Docker image
+      uses: docker/build-push-action@v4
+      with:
+        context: .
+        push: true
+        tags: |
+          ${{ secrets.DOCKERHUB_USERNAME }}/nodeapp:${{ steps.meta.outputs.sha_short }}
+          ${{ secrets.DOCKERHUB_USERNAME }}/nodeapp:latest
+    
+    - name: Deploy to EC2
+      uses: appleboy/ssh-action@master
+      with:
+        host: ${{ secrets.EC2_HOST }}
+        username: ${{ secrets.EC2_USER }}
+        key: ${{ secrets.EC2_SSH_KEY }}
+        script: |
+          # Зупиняємо і видаляємо старий контейнер
+          docker rm -f nodeapp || true
+          
+          # Завантажуємо новий образ
+          docker pull ${{ secrets.DOCKERHUB_USERNAME }}/nodeapp:${{ steps.meta.outputs.sha_short }}
+          
+          # Запускаємо новий контейнер
+          docker run -d \
+            --name nodeapp \
+            -p 3000:3000 \
+            ${{ secrets.DOCKERHUB_USERNAME }}/nodeapp:${{ steps.meta.outputs.sha_short }}
