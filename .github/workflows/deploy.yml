@@ -21,11 +21,11 @@ jobs:
         username: ${{ secrets.DOCKERHUB_USERNAME }}
         password: ${{ secrets.DOCKERHUB_TOKEN }}
     
-    - name: Extract metadata
+    - name: Extract metadata (Git commit hash)
       id: meta
       run: |
         echo "sha_short=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
-        echo "Git commit hash: $(git rev-parse --short HEAD)"
+        echo "📝 Git commit hash: $(git rev-parse --short HEAD)"
     
     - name: Build and push Docker image
       uses: docker/build-push-action@v4
@@ -36,8 +36,9 @@ jobs:
           ${{ secrets.DOCKERHUB_USERNAME }}/nodeapp:${{ steps.meta.outputs.sha_short }}
           ${{ secrets.DOCKERHUB_USERNAME }}/nodeapp:latest
     
-    - name: Image successfully pushed
+    - name: Display success message
       run: |
-        echo "✅ Docker image pushed successfully!"
-        echo "Image: ${{ secrets.DOCKERHUB_USERNAME }}/nodeapp:${{ steps.meta.outputs.sha_short }}"
-        echo "Latest: ${{ secrets.DOCKERHUB_USERNAME }}/nodeapp:latest"
+        echo "✅ Docker image successfully built and pushed!"
+        echo "🏷️  Tagged with commit hash: ${{ steps.meta.outputs.sha_short }}"
+        echo "🐳 Image: ${{ secrets.DOCKERHUB_USERNAME }}/nodeapp:${{ steps.meta.outputs.sha_short }}"
+        echo "📦 Latest: ${{ secrets.DOCKERHUB_USERNAME }}/nodeapp:latest"
