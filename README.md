@@ -1,30 +1,58 @@
 ﻿# Node.js CI/CD Project
 
+## Опис
+Простий Node.js застосунок з автоматичною збіркою Docker образів через GitHub Actions.
+
 ## Docker Commands
 
-### Build image
+### Збірка образу локально
 ```bash
-docker build -t lukianchuk/nodeapp:$(git rev-parse --short HEAD) .
+docker build -t yunona46/nodeapp:$(git rev-parse --short HEAD) .
 ```
 
-### Run container
+### Запуск контейнера
 ```bash
-docker run -d -p 3000:3000 --name nodeapp lukianchuk/nodeapp:latest
+docker run -d -p 3000:3000 --name nodeapp yunona46/nodeapp:latest
 ```
 
-### Stop and remove
+### Перевірка
+```bash
+curl http://localhost:3000
+```
+
+### Зупинка і видалення
 ```bash
 docker stop nodeapp
 docker rm nodeapp
 ```
 
-## Deployment
+## CI/CD Pipeline
 
-The application automatically deploys to EC2 when pushing to main/master branch.
+При push в гілку main/master автоматично:
+1. ✅ Збирається Docker образ
+2. ✅ Образ позначається хешем коміту
+3. ✅ Завантажується в Docker Hub
 
-## Technologies
+## Структура проекту
+```
+lukianchuk-node-ci/
+├── Dockerfile           # Інструкції для збірки образу
+├── .dockerignore        # Виключення файлів з образу
+├── index.js             # Node.js застосунок
+├── package.json         # Залежності проекту
+├── .github/
+│   └── workflows/
+│       └── deploy.yml   # CI/CD pipeline
+└── README.md
+```
 
-- Node.js
-- Docker
-- GitHub Actions
-- AWS EC2
+## Технології
+
+- **Node.js** - Runtime середовище
+- **Docker** - Контейнеризація
+- **GitHub Actions** - CI/CD автоматизація
+- **Docker Hub** - Реєстр образів
+
+## Автор
+
+yunona46
