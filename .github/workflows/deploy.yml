@@ -1,4 +1,4 @@
-п»їname: Build and Deploy
+name: Build and Deploy
 
 on:
   push:
@@ -41,16 +41,17 @@ jobs:
       with:
         host: ${{ secrets.EC2_HOST }}
         username: ${{ secrets.EC2_USER }}
-        key: ${{ secrets.EC2_SSH_KEY }}
+        key: ${{ secrets.EC2_SSH_KEY_B64_B64 }}
         script: |
-          # Р—СѓРїРёРЅСЏС”РјРѕ С– РІРёРґР°Р»СЏС”РјРѕ СЃС‚Р°СЂРёР№ РєРѕРЅС‚РµР№РЅРµСЂ
+          # Зупиняємо і видаляємо старий контейнер
           docker rm -f nodeapp || true
           
-          # Р—Р°РІР°РЅС‚Р°Р¶СѓС”РјРѕ РЅРѕРІРёР№ РѕР±СЂР°Р·
+          # Завантажуємо новий образ
           docker pull ${{ secrets.DOCKERHUB_USERNAME }}/nodeapp:${{ steps.meta.outputs.sha_short }}
           
-          # Р—Р°РїСѓСЃРєР°С”РјРѕ РЅРѕРІРёР№ РєРѕРЅС‚РµР№РЅРµСЂ
+          # Запускаємо новий контейнер
           docker run -d \
             --name nodeapp \
             -p 3000:3000 \
             ${{ secrets.DOCKERHUB_USERNAME }}/nodeapp:${{ steps.meta.outputs.sha_short }}
+
