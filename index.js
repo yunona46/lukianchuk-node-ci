@@ -25,13 +25,13 @@ async function connectToDatabase() {
     console.log('🐘 PostgreSQL version:', result.rows[0].pg_version);
     
     // Створюємо тестову таблицю якщо не існує
-    await client.query(\
-      CREATE TABLE IF NOT EXISTS visits (
-        id SERIAL PRIMARY KEY,
-        timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        ip_address VARCHAR(50)
-      )
-    \);
+    await client.query(
+      'CREATE TABLE IF NOT EXISTS visits (' +
+      'id SERIAL PRIMARY KEY, ' +
+      'timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP, ' +
+      'ip_address VARCHAR(50)' +
+      ')'
+    );
     console.log('📊 Table "visits" is ready');
     
     client.release();
@@ -48,24 +48,24 @@ app.get('/', async (req, res) => {
   try {
     // Записуємо візит
     const ip = req.headers['x-forwarded-for'] || req.connection.remoteAddress;
-    await pool.query('INSERT INTO visits (ip_address) VALUES (\)', [ip]);
+    await pool.query('INSERT INTO visits (ip_address) VALUES ($1)', [ip]);
     
     // Отримуємо кількість візитів
     const result = await pool.query('SELECT COUNT(*) as total FROM visits');
     const totalVisits = result.rows[0].total;
     
-    res.send(\
-      <h1>🚀 Node.js + PostgreSQL App</h1>
-      <p>✅ Successfully connected to database!</p>
-      <p>📊 Total visits: <strong>\</strong></p>
-      <p>🕒 Current time: \</p>
-      <p>🐳 Running in Docker container</p>
-    \);
+    res.send(
+      '<h1>🚀 Node.js + PostgreSQL App</h1>' +
+      '<p>✅ Successfully connected to database!</p>' +
+      '<p>📊 Total visits: <strong>' + totalVisits + '</strong></p>' +
+      '<p>🕒 Current time: ' + new Date().toLocaleString() + '</p>' +
+      '<p>🐳 Running in Docker container</p>'
+    );
   } catch (err) {
-    res.status(500).send(\
-      <h1>❌ Database Error</h1>
-      <p>\</p>
-    \);
+    res.status(500).send(
+      '<h1>❌ Database Error</h1>' +
+      '<p>' + err.message + '</p>'
+    );
   }
 });
 
@@ -90,13 +90,12 @@ app.get('/db-check', async (req, res) => {
 // Endpoint для статистики
 app.get('/stats', async (req, res) => {
   try {
-    const result = await pool.query(\
-      SELECT 
-        COUNT(*) as total_visits,
-        COUNT(DISTINCT ip_address) as unique_visitors,
-        MAX(timestamp) as last_visit
-      FROM visits
-    \);
+    const result = await pool.query(
+      'SELECT COUNT(*) as total_visits, ' +
+      'COUNT(DISTINCT ip_address) as unique_visitors, ' +
+      'MAX(timestamp) as last_visit ' +
+      'FROM visits'
+    );
     res.json({
       success: true,
       stats: result.rows[0]
@@ -115,6 +114,6 @@ app.get('/health', (req, res) => {
 });
 
 app.listen(PORT, () => {
-  console.log(\🚀 Server is running on port \\);
-  console.log(\📍 Environment: \\);
+  console.log('🚀 Server is running on port ' + PORT);
+  console.log('📍 Environment: ' + (process.env.NODE_ENV || 'development'));
 });
