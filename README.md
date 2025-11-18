@@ -1,103 +1,239 @@
-﻿# Node.js CI/CD Project with Docker & AWS EC2
+﻿# Node.js CI/CD Project with Docker Compose & PostgreSQL
 
 Автор: **yunona46**
 
 ## 📋 Опис
 
-Node.js застосунок з повною автоматизацією CI/CD через GitHub Actions. При кожному push автоматично збирається Docker образ, завантажується в Docker Hub і деплоїться на AWS EC2.
-
-## 🚀 CI/CD Pipeline
-
-### Автоматичні процеси:
-1. ✅ Checkout коду з GitHub
-2. ✅ Налаштування Docker Buildx
-3. ✅ Авторизація в Docker Hub
-4. ✅ Генерація унікального тегу з Git commit hash
-5. ✅ Збірка Docker образу
-6. ✅ Push в Docker Hub (2 теги: commit hash + latest)
-7. ✅ SSH підключення до AWS EC2
-8. ✅ Встановлення Docker на сервері (якщо потрібно)
-9. ✅ Зупинка старого контейнера
-10. ✅ Завантаження нового образу
-11. ✅ Запуск нового контейнера
+Повноцінний Node.js застосунок з PostgreSQL базою даних, автоматичною CI/CD через GitHub Actions та деплоєм на AWS EC2 через Docker Compose.
 
 ## 🏗️ Архітектура
 ```
-GitHub → GitHub Actions → Docker Hub → AWS EC2
-  ↓           ↓              ↓            ↓
- Push      Build Image    Store        Deploy
+┌─────────────┐     ┌──────────────┐     ┌─────────────┐
+│   GitHub    │────▶│GitHub Actions│────▶│  Docker Hub │
+└─────────────┘     └──────────────┘     └─────────────┘
+                           │                      │
+                           ▼                      ▼
+                    ┌──────────────┐       ┌─────────────┐
+                    │   AWS EC2    │◀──────│Docker Compose│
+                    └──────────────┘       └─────────────┘
+                           │
+                    ┌──────┴──────┐
+                    ▼             ▼
+            ┌─────────────┐  ┌─────────────┐
+            │  Node.js    │  │ PostgreSQL  │
+            │  Container  │──│  Container  │
+            └─────────────┘  └─────────────┘
 ```
+
+## 🚀 Функціонал
+
+### API Endpoints:
+
+- **GET /** - Головна сторінка з лічильником візитів
+- **GET /db-check** - Перевірка підключення до БД
+- **GET /stats** - Статистика візитів
+- **GET /health** - Health check
+
+### База даних:
+
+- **PostgreSQL 15** (Alpine)
+- Таблиця isits для збереження статистики
+- Автоматичне створення схеми
+- Persistent volume для збереження даних
 
 ## 📁 Структура проекту
 ```
 lukianchuk-node-ci/
-├── Dockerfile              # Інструкції для збірки образу
-├── .dockerignore           # Виключення файлів з образу
-├── index.js                # Node.js застосунок
-├── package.json            # Залежності
+├── Dockerfile              # Multi-stage build для Node.js
+├── docker-compose.yml      # Оркестрація сервісів
+├── .dockerignore           # Виключення файлів
+├── index.js                # Express + PostgreSQL
+├── package.json            # Залежності (express, pg)
 ├── .github/
 │   └── workflows/
-│       └── deploy.yml      # CI/CD pipeline
+│       └── deploy.yml      # CI/CD з docker-compose
 └── README.md
 ```
 
-## 🐳 Docker Commands
+## 🐳 Docker Compose
 
-### Локальна збірка
+### Сервіси:
+
+**app** (Node.js):
+- Image: yunona46/nodeapp:latest
+- Port: 3000
+- Змінні: DB_HOST, DB_PORT, DB_NAME, DB_USER, DB_PASSWORD
+- Залежить від: db (з health check)
+
+**db** (PostgreSQL):
+- Image: postgres:15-alpine
+- Port: 5432
+- Volume: postgres_data (persistent storage)
+- Health check: pg_isready
+
+### Запуск локально:
 ```bash
-docker build -t yunona46/nodeapp:$(git rev-parse --short HEAD) .
+# Збірка і запуск
+docker-compose up --build
+
+# У фоні
+docker-compose up -d
+
+# Перегляд логів
+docker-compose logs -f
+
+# Зупинка
+docker-compose down
+
+# Зупинка з видаленням volumes
+docker-compose down -v
 ```
 
-### Запуск локально
+## 🔧 Локальна розробка
 ```bash
-docker run -d -p 3000:3000 --name nodeapp yunona46/nodeapp:latest
-```
+# Встановлення залежностей
+npm install
 
-### Перевірка
-```bash
+# Запуск PostgreSQL локально (через Docker)
+docker run -d \
+  --name postgres-local \
+  -e POSTGRES_DB=mydb \
+  -e POSTGRES_USER=postgres \
+  -e POSTGRES_PASSWORD=postgres123 \
+  -p 5432:5432 \
+  postgres:15-alpine
+
+# Запуск Node.js застосунку
+DB_HOST=localhost npm start
+
+# Тестування
 curl http://localhost:3000
+curl http://localhost:3000/db-check
+curl http://localhost:3000/stats
 ```
 
-## 🌍 Деплой на AWS EC2
+## 📊 CI/CD Pipeline
 
-### Інфраструктура:
-- **Регіон:** Europe (Stockholm)
-- **Instance Type:** t2.micro (Free Tier)
-- **OS:** Ubuntu Server 22.04 LTS
-- **Порти:** 22 (SSH), 80 (HTTP), 443 (HTTPS), 3000 (Node.js)
+### Етапи:
 
-### Доступ до застосунку:
+1. ✅ Checkout коду
+2. ✅ Setup Docker Buildx
+3. ✅ Login до Docker Hub
+4. ✅ Генерація Git commit hash тегу
+5. ✅ Build та push Docker образу
+6. ✅ SSH підключення до EC2
+7. ✅ Встановлення Docker (якщо потрібно)
+8. ✅ Створення docker-compose.yml на сервері
+9. ✅ Pull нового образу
+10. ✅ Запуск через docker-compose
+
+### Автоматичний деплой:
+
+- ⚡ Trigger: Push в main/master
+- 🎯 Target: AWS EC2 (Europe Stockholm)
+- 📦 Method: Docker Compose
+- ⏱️ Duration: ~2-3 хвилини
+
+## 🌍 Deployment
+
+### AWS EC2 Infrastructure:
+
+- **Region:** Europe (Stockholm)
+- **Instance:** t2.micro (Free Tier)
+- **OS:** Ubuntu 22.04 LTS
+- **Ports:** 22 (SSH), 80, 443, 3000 (App), 5432 (PostgreSQL)
+
+### Доступ:
 ```
-http://ваша_EC2_IP:3000
+🌐 Application: http://<EC2_IP>:3000
+📊 DB Check:    http://<EC2_IP>:3000/db-check
+📈 Statistics:  http://<EC2_IP>:3000/stats
+🏥 Health:      http://<EC2_IP>:3000/health
 ```
 
 ## 🔐 GitHub Secrets
 
-Налаштовані секрети:
-- `DOCKERHUB_USERNAME` - Docker Hub username
-- `DOCKERHUB_TOKEN` - Docker Hub access token
-- `EC2_HOST` - AWS EC2 public IP
-- `EC2_USER` - SSH username (ubuntu)
-- `EC2_SSH_KEY` - Private SSH key (.pem)
+Налаштовані секрети (5):
+
+- **DOCKERHUB_USERNAME** - Docker Hub username
+- **DOCKERHUB_TOKEN** - Personal Access Token
+- **EC2_HOST** - AWS EC2 Public IPv4
+- **EC2_USER** - SSH username (ubuntu)
+- **EC2_SSH_KEY** - Private SSH key (.pem)
 
 ## 🛠️ Технології
 
-- **Node.js** (LTS) - Runtime
+### Backend:
+- **Node.js** (LTS) - JavaScript runtime
+- **Express** - Web framework
+- **pg** - PostgreSQL client
+
+### Database:
+- **PostgreSQL 15** - Relational database
+- **Alpine Linux** - Lightweight image
+
+### DevOps:
 - **Docker** - Контейнеризація
+- **Docker Compose** - Оркестрація
 - **GitHub Actions** - CI/CD
 - **Docker Hub** - Registry
-- **AWS EC2** - Hosting
-- **Ubuntu 22.04** - OS
+- **AWS EC2** - Cloud hosting
 
 ## 📦 Docker Hub
 
 https://hub.docker.com/r/yunona46/nodeapp
 
+### Tags:
+- latest - Остання версія
+- <git-hash> - Версія з commit hash
+
+## 🧪 Тестування
+```bash
+# Health check
+curl http://<EC2_IP>:3000/health
+
+# Database connection
+curl http://<EC2_IP>:3000/db-check
+
+# Statistics
+curl http://<EC2_IP>:3000/stats
+
+# Main page (відкрийте у браузері)
+http://<EC2_IP>:3000
+```
+
+## 📝 SSH Management
+```bash
+# Підключення до EC2
+ssh -i nodejs-app-key-2025.pem ubuntu@<EC2_IP>
+
+# Перегляд контейнерів
+docker ps
+
+# Логи застосунку
+docker logs nodeapp
+
+# Логи PostgreSQL
+docker logs postgres-db
+
+# Docker Compose статус
+cd ~/nodeapp
+docker-compose ps
+
+# Перезапуск сервісів
+docker-compose restart
+```
+
 ## 👤 Автор
 
-- GitHub: [@yunona46](https://github.com/yunona46)
-- Docker Hub: [yunona46](https://hub.docker.com/u/yunona46)
+- **GitHub:** [@yunona46](https://github.com/yunona46)
+- **Docker Hub:** [yunona46](https://hub.docker.com/u/yunona46)
+- **Repository:** [lukianchuk-node-ci](https://github.com/yunona46/lukianchuk-node-ci)
+
+## 📄 Ліцензія
+
+Навчальний проект для курсу DevOps.
 
 ---
 
-**Практичне заняття 9** - Створення Dockerfile для застосунку Node.js
+**Практичне заняття 9** - Створення Dockerfile + Docker Compose для Node.js застосунку
